@@ -173,6 +173,222 @@ def social():
                f'<rect x="562" y="492" width="16" height="30" fill="{FALCON}"/>')
 
 
+# --- wallpapers ------------------------------------------------------------------------------------------------------
+
+MONO = 'font-family="SF Mono, Menlo, Consolas, monospace"'
+WALLPAPER_SIZES = {
+    "5120x2880": (5120, 2880),   # desktop 16:9 – 5K, scales down to 4K, 1440p, 1080p
+    "3456x2234": (3456, 2234),   # desktop 16:10 – MacBook Pro 16"
+    "1320x2868": (1320, 2868),   # mobile – iPhone Pro Max, crops well to other phones
+}
+MARK_BOX = (104, 292, 920, 916)     # falcon + lake in the 1024 box
+FALCON_BOX = (104, 292, 920, 712)   # falcon alone
+
+
+def place(content, box, cx, cy, width):
+    """Put content whose bounding box is `box` centred on (cx, cy), `width` wide."""
+    x0, y0, x1, y1 = box
+    k = width / (x1 - x0)
+    return (f'<g transform="translate({cx - k * (x0 + x1) / 2:.1f} {cy - k * (y0 + y1) / 2:.1f}) '
+            f'scale({k:.4f})">{content}</g>')
+
+
+def grid(w, h, step, sw):
+    """The faint terminal grid of the social preview, centred on the canvas."""
+    ox, oy = (w / 2) % step, (h / 2) % step
+    xs = "".join(f'<line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="{h}"/>' for x in frange(ox, w, step))
+    ys = "".join(f'<line x1="0" y1="{y:.1f}" x2="{w}" y2="{y:.1f}"/>' for y in frange(oy, h, step))
+    return f'<g stroke="#151A20" stroke-width="{sw:.1f}">{xs}{ys}</g>'
+
+
+def frange(start, stop, step):
+    while start <= stop:
+        yield start
+        start += step
+
+
+def wallpaper_minimal(w, h):
+    """Quiet: the mark, small, on night – nothing else."""
+    portrait = h > w
+    width = (0.30 * w) if portrait else (0.15 * h)
+    cy = 0.60 * h if portrait else 0.5 * h   # phones: below the clock
+    return svg(f"0 0 {w} {h}", f'<rect width="{w}" height="{h}" fill="{NIGHT}"/>'
+               + place(mark(), MARK_BOX, w / 2, cy, width))
+
+
+def wallpaper_official(w, h):
+    """The official look: grid, lockup (stacked on phones), the claim, the address."""
+    s = min(w, h)
+    body, ww = wordmark_body()
+    out = f'<rect width="{w}" height="{h}" fill="{NIGHT}"/>' + grid(w, h, s / 18, max(1, s / 1440))
+    if h > w:
+        fs = 0.034 * w
+        out += place(mark(), MARK_BOX, w / 2, 0.50 * h, 0.40 * w)
+        out += place(body, (-7, 0, ww + 7, 107), w / 2, 0.635 * h, 0.62 * w)
+        out += (f'<text x="{w / 2}" y="{0.70 * h:.0f}" {MONO} font-size="{fs:.0f}" fill="{MIST}" '
+                f'text-anchor="middle">Falcon Lake Open Source Software</text>'
+                f'<text x="{w / 2}" y="{0.70 * h + 1.6 * fs:.0f}" {MONO} font-size="{fs:.0f}" fill="{REED}" '
+                f'text-anchor="middle">// from Falkensee</text>'
+                f'<text x="{w / 2}" y="{0.93 * h:.0f}" {MONO} font-size="{0.8 * fs:.0f}" fill="{REED}" '
+                f'text-anchor="middle">falkoss.org</text>')
+    else:
+        fs = 0.022 * h
+        lock = (f'<g transform="translate(-30 -40) scale(0.2)">{mark()}</g>'
+                f'<g transform="translate(184 26)">{body}</g>')
+        out += place(lock, (-10, 18, 184 + ww + 7, 143), w / 2, 0.46 * h, 0.40 * w)
+        out += (f'<text x="{w / 2}" y="{0.46 * h + 0.13 * h:.0f}" {MONO} font-size="{fs:.0f}" fill="{MIST}" '
+                f'text-anchor="middle">Falcon Lake Open Source Software '
+                f'<tspan fill="{REED}">– from Falkensee</tspan></text>'
+                f'<text x="{w / 2}" y="{0.94 * h:.0f}" {MONO} font-size="{0.7 * fs:.0f}" fill="{REED}" '
+                f'text-anchor="middle">falkoss.org</text>')
+    return svg(f"0 0 {w} {h}", out)
+
+
+TERMINAL = [
+    ("$", "whoami"),
+    ("", "falk{OSS}"),
+    ("$", "expand falkOSS"),
+    ("", "{FA}lcon {L}a{K}e → {FALK}ensee + {OSS}"),
+    ("$", 'initials "Falcon Lake Open Source Software"'),
+    ("", "{FLOSS}"),
+    ("$", "cat /etc/motd"),
+    ("#", "free software"),
+    ("#", "no telemetry"),
+    ("#", "everything included"),
+    ("$", ""),
+]
+
+
+def terminal_lines(x, y, fs):
+    """A short shell session; {…} is amber, the last prompt gets a block cursor."""
+    out, lh = [], 1.55 * fs
+    for i, (kind, text) in enumerate(TERMINAL):
+        ty = y + i * lh
+        if kind == "$":
+            spans = f'<tspan fill="{REED}">$ </tspan>{text}'
+            if not text:
+                out.append(f'<rect x="{x + 2 * 0.602 * fs:.1f}" y="{ty - 0.82 * fs:.1f}" width="{0.6 * fs:.1f}" '
+                           f'height="{1.0 * fs:.1f}" fill="{FALCON}"/>')
+            color = MIST
+        else:
+            spans = text.replace("{", f'<tspan fill="{FALCON}">').replace("}", "</tspan>")
+            color = REED if kind == "#" else MIST
+        out.append(f'<text x="{x:.1f}" y="{ty:.1f}" {MONO} font-size="{fs:.1f}" fill="{color}" '
+                   f'xml:space="preserve">{spans}</text>')
+    return "".join(out)
+
+
+def horizon(w, y0, u, rows=4):
+    """The lake's waveform drawn out to a horizon: rows of flat lines with the lake's pulse at irregular places,
+    receding into the night; a straight line closes it like the line under the lake in the mark."""
+    import random
+    rnd = random.Random(1923)
+    colors = [LAKE, "#3A4A59", "#29343F", "#1D252D"]
+    out = []
+    for r in range(rows):
+        y, a = y0 + r * 120 * u, 28 * u * (1 - 0.18 * r)
+        x, pts = -rnd.uniform(0, 600) * u, []
+        while x < w + 800 * u:
+            pts.append((x, y))
+            x += rnd.choice((128, 256, 384, 640, 896)) * u
+            seg = [(0, 0), (48, -a / u), (144, a / u), (240, -a / u), (336, a / u), (384, 0)]
+            pts += [(x + dx * u, y + dy * u) for dx, dy in seg]
+            x += 384 * u
+        p = " ".join(f"{px:.1f},{py:.1f}" for px, py in pts)
+        out.append(f'<polyline points="{p}" stroke="{colors[r]}" stroke-width="{28 * u * (1 - 0.15 * r):.1f}"/>')
+    yl = y0 + rows * 120 * u
+    out.append(f'<line x1="0" y1="{yl:.1f}" x2="{w}" y2="{yl:.1f}" stroke="{colors[-1]}" stroke-width="{20 * u:.1f}"/>')
+    return (f'<g fill="none" stroke-linecap="square" stroke-linejoin="miter">' + "".join(out) + "</g>")
+
+
+def wallpaper_terminal(w, h):
+    """Playful: a shell session that spells the name out, a big falcon, the lake stretched to a horizon."""
+    out = f'<rect width="{w}" height="{h}" fill="{NIGHT}"/>' + grid(w, h, min(w, h) / 18, max(1, min(w, h) / 1440))
+    if h > w:
+        fw = 0.70 * w
+        out += horizon(w, 0.50 * h, fw / 816 * 0.55)
+        out += place(falcon(FALCON), FALCON_BOX, w / 2, 0.36 * h, fw)
+        out += terminal_lines(0.08 * w, 0.66 * h, 0.032 * w)
+    else:
+        fw = 0.34 * w
+        out += horizon(w, 0.72 * h, fw / 816 * 0.55)
+        out += place(falcon(FALCON), FALCON_BOX, 0.68 * w, 0.40 * h, fw)
+        out += terminal_lines(0.08 * w, 0.20 * h, 0.024 * h)
+    return svg(f"0 0 {w} {h}", out)
+
+
+def wallpaper_blackout(w, h):
+    """For dark-mode purists: true black (OLED off), the mark small in greys in the top-left corner."""
+    portrait = h > w
+    width = 0.14 * w if portrait else 0.05 * w
+    k = width / (MARK_BOX[2] - MARK_BOX[0])
+    margin = 0.07 * w if portrait else 0.035 * w
+    top = 0.075 * h if portrait else 0.05 * h   # below the status bar / menu bar
+    cx = margin + width / 2
+    cy = top + k * (MARK_BOX[3] - MARK_BOX[1]) / 2
+    return svg(f"0 0 {w} {h}", f'<rect width="{w}" height="{h}" fill="#000000"/>'
+               + place(mark("#6B7178", "#3A3F45"), MARK_BOX, cx, cy, width))
+
+
+FALCON_POLYS = (
+    [(506, 380), (340, 344), (270, 382), (104, 540), (292, 482), (506, 492)],
+    [(1024 - 506, 380), (1024 - 340, 344), (1024 - 270, 382), (1024 - 104, 540), (1024 - 292, 482), (1024 - 506, 492)],
+    [(512, 292), (548, 322), (546, 410), (532, 566), (492, 566), (478, 410), (476, 322)],
+    [(492, 552), (532, 552), (566, 690), (512, 712), (458, 690)],
+)
+GREY_BIRD, GREY_LAKE = "#A6ABB0", "#4A4F55"
+GREY_STEPS = ["#3A3D41", "#2E3134", "#25272A", "#1D1F21", "#17181A", "#121314"]   # receding, stepped
+
+
+def lake_ripples(cx=512, cy=902, flat=0.24):
+    """Ripples spreading from the lake, below it only: the lower halves of flattened octagons (water seen at an
+    angle), fading out in steps of grey into the black."""
+    import math
+    out, r, gap = [], 340, 60
+    for i in range(len(GREY_STEPS)):
+        R = r / math.cos(math.pi / 8)
+        pts = [(cx + R * math.cos(math.pi / 8 + k * math.pi / 4), cy + flat * R * math.sin(math.pi / 8 + k * math.pi / 4))
+               for k in range(4)]
+        p = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+        out.append(f'<polyline points="{p}" stroke="{GREY_STEPS[i]}"/>')
+        r += gap
+        gap *= 1.25
+    return f'<g fill="none" stroke-width="7" stroke-linejoin="miter">{"".join(out)}</g>'
+
+
+def rotate(pts, pivot, deg):
+    import math
+    a = math.radians(deg)
+    px, py = pivot
+    return [(px + (x - px) * math.cos(a) - (y - py) * math.sin(a),
+             py + (x - px) * math.sin(a) + (y - py) * math.cos(a)) for x, y in pts]
+
+
+def wallpaper_wingbeat(w, h):
+    """Black and greys: the mark very large in the middle, its wings echoed as outlines through one upstroke –
+    a stroboscopic photo of a wingbeat, each echo a step darker."""
+    portrait = h > w
+    width = 0.66 * w if portrait else 0.36 * w
+    left, right = FALCON_POLYS[0], FALCON_POLYS[1]
+    echoes = []
+    for i, deg in enumerate((10, 20, 30, 40, 50)):
+        color = GREY_STEPS[i]
+        for poly, sign, pivot in ((left, 1, (506, 436)), (right, -1, (518, 436))):
+            pts = rotate(poly, pivot, sign * deg)
+            p = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+            echoes.append(f'<polygon points="{p}" stroke="{color}"/>')
+    body = (lake_ripples()
+            + f'<g fill="none" stroke-width="7" stroke-linejoin="miter">{"".join(reversed(echoes))}</g>'
+            + mark(GREY_BIRD, GREY_LAKE))
+    box = (40, 40, 984, 916)   # the raised wings reach well above the mark
+    return svg(f"0 0 {w} {h}", f'<rect width="{w}" height="{h}" fill="#000000"/>'
+               + place(body, box, w / 2, 0.50 * h, width * (box[2] - box[0]) / (MARK_BOX[2] - MARK_BOX[0])))
+
+
+WALLPAPERS = {"minimal": wallpaper_minimal, "official": wallpaper_official, "terminal": wallpaper_terminal,
+              "blackout": wallpaper_blackout, "wingbeat": wallpaper_wingbeat}
+
+
 def favicon_svg():
     """Transparent mark for browsers; follows light/dark mode."""
     style = (f'<style>.b{{fill:{FALCON}}}.w{{stroke:{LAKE}}}'
@@ -256,6 +472,11 @@ def main():
     render(s("falkoss-labs-social-1280x640.svg"), os.path.join(PNG, "labs", "falkoss-labs-social-1280x640.png"), 1280, 640)
     for v in ("on-dark", "on-light"):
         render(s(f"falkoss-labs-lockup-{v}.svg"), os.path.join(PNG, "labs", f"falkoss-labs-lockup-{v}-1200.png"), 1200)
+    for style, make in WALLPAPERS.items():
+        for size, (w, h) in WALLPAPER_SIZES.items():
+            name = f"falkoss-wallpaper-{style}-{size}"
+            write(os.path.join(SVG, "wallpaper", name + ".svg"), make(w, h))
+            render(os.path.join(SVG, "wallpaper", name + ".svg"), os.path.join(PNG, "wallpaper", name + ".png"), w, h)
 
     # Website head assets
     os.makedirs(SITE, exist_ok=True)

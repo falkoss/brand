@@ -35,6 +35,7 @@ monospace type. No gradients, no soft curves, no stock-photo nature.
 | Mark alone (transparent) | `svg/falkoss-mark-on-dark.svg`, `-on-light.svg`; one colour: `-black.svg`, `-white.svg` |
 | App-like icon | `png/icon/` (rounded), `png/icon-square/` (edge to edge), `png/icon-small/` (16–48 px) |
 | Print, stickers | the SVGs (vector); one-colour marks for single-colour print |
+| Desktop and phone wallpapers | `png/wallpaper/` – `minimal` (the mark alone), `official` (grid, lockup, claim), `terminal` (a shell session, the falcon over the lake as a horizon), `blackout` (true black `#000000`, the mark small in greys top left – for dark mode and OLED), `wingbeat` (true black, the mark very large in greys, its wings echoed as outlines through one upstroke, ripples spreading from the lake below and fading out in steps of grey); each 5120×2880 (16:9), 3456×2234 (16:10) and 1320×2868 (phone) |
 
 ## falkOSS labs
 
